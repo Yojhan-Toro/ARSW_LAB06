@@ -138,6 +138,8 @@ Ahora el nombre del plano actual se toma de state.blueprints.current.name usando
   - Envío de formularios.
   - Interacciones básicas con Redux (por ejemplo: dispatch de `fetchByAuthor`).
 
+![](images/pruebas.png)
+
 ---
 
 ### Notas rápidas y recomendaciones
