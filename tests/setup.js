@@ -1,35 +1,12 @@
 import '@testing-library/jest-dom'
 
-HTMLCanvasElement.prototype.getContext = () => {
-  const noop = () => {}
-  return {
-    canvas: {},
-    fillRect: noop,
-    clearRect: noop,
-    beginPath: noop,
-    moveTo: noop,
-    lineTo: noop,
-    stroke: noop,
-    arc: noop,
-    fill: noop,
-    strokeRect: noop,
-    closePath: noop,
-    save: noop,
-    restore: noop,
-    setTransform: noop,
-    translate: noop,
-    scale: noop,
-    rotate: noop,
-    transform: noop,
-    drawImage: noop,
-    fillText: noop,
-    measureText: () => ({ width: 0 }),
-    putImageData: noop,
-    createLinearGradient: () => ({ addColorStop: noop }),
-    createPattern: () => ({}),
-    createRadialGradient: () => ({ addColorStop: noop }),
-    getImageData: () => ({}),
-    getLineDash: () => [],
-    setLineDash: noop,
-  }
-}
+HTMLCanvasElement.prototype.getContext = vi.fn(() => ({
+  clearRect: vi.fn(),
+  fillRect: vi.fn(),
+  beginPath: vi.fn(),
+  moveTo: vi.fn(),
+  lineTo: vi.fn(),
+  arc: vi.fn(),
+  stroke: vi.fn(),
+  fill: vi.fn(),
+}))

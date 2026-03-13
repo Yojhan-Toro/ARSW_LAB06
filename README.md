@@ -1,5 +1,7 @@
 # Lab – React Client for Blueprints (Redux + Axios + JWT)
 
+## Yojhan Toro Rivera - Ivan Cubillos Vela
+
 > Basado en el cliente HTML/JS del repo de referencia, este laboratorio moderniza el _frontend_ con **React + Vite**, **Redux Toolkit**, **Axios** (con interceptores y JWT), **React Router** y pruebas con **Vitest + Testing Library**.
 
 ## Objetivos de aprendizaje
@@ -69,7 +71,9 @@ blueprints-react-lab/
 
 - Agregar un lienzo (Canvas) a la página.
 - Incluir un componente `BlueprintCanvas` con un identificador propio.
-- Definir dimensiones adecuadas (ej. `520×360`) para que no ocupe toda la pantalla pero permita dibujar los planos.
+- Definir dimensiones adecuadas (ej. `520×360`) para que no ocupe toda la pantalla pero permita dibujar los planos
+
+Se agregó data-testid="blueprint-canvas" al "canvas" en BlueprintCanvas.jsx para poder identificarlo fácil en las pruebas, también se dejaron dimensiones fijas de 520×360, así se puede dibujar bien sin que el canvas ocupe toda la pantalla
 
 ## 2. Listar los planos de un autor
 
@@ -79,6 +83,8 @@ blueprints-react-lab/
   - Número de puntos
   - Botón `Open` para abrirlo
 
+BlueprintList.jsx se cambió de tarjetas a una tabla con las tres columnas que pedían, Blueprint name, Number of points y el botón Open, en BlueprintsPage.jsx cuando se escribe el autor en el input se ejecuta fetchByAuthor y los resultados se guardan en Redux
+
 ## 3. Seleccionar un plano y graficarlo
 
 Al hacer clic en el botón `Open`, debe:
@@ -86,6 +92,8 @@ Al hacer clic en el botón `Open`, debe:
 - Actualizar un campo de texto con el nombre del plano actual.
 - Obtener los puntos del plano correspondiente.
 - Dibujar consecutivamente los segmentos de recta en el canvas y marcar cada punto.
+
+Se modifico de tal manera que cuando se hace clic en Open se despacha fetchBlueprint, eso actualiza current en Redux, con eso se actualiza el "input readOnly" con el nombre del plano y también se mandan los puntos a BlueprintCanvas, donde se dibujan las líneas entre puntos consecutivos y cada punto se marca con un círculo amarillo
 
 ## 4. Servicios: `apimock` y `apiclient`
 
@@ -112,6 +120,10 @@ VITE_USE_MOCK=true
 
 - El nombre del plano actual debe mostrarse en el DOM como parte del estado global (Redux).
 - Evitar manipular directamente el DOM; usar componentes y props/estado.
+
+Ahora el nombre del plano actual se toma de state.blueprints.current.name usando useSelector y se muestra en el "input readOnly", en ningún momento se usa document.getElementById ni ninguna manipulación directa del DOM, todo se maneja con estado de Redux y props entre componentes
+
+![](images/0.png)
 
 ## 6. Estilos
 

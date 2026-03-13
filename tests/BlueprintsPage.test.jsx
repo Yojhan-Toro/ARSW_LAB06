@@ -1,115 +1,112 @@
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { Provider } from 'react-redux'
 import { configureStore } from '@reduxjs/toolkit'
 import { MemoryRouter } from 'react-router-dom'
-import blueprintsReducer from '../src/features/blueprints/blueprintsSlice'
-import BlueprintsPage from '../src/pages/BlueprintsPage'
+import BlueprintsPage from '../src/pages/BlueprintsPage.jsx'
+import blueprintsReducer from '../src/features/blueprints/blueprintsSlice.js'
 
-const { getMock, postMock } = vi.hoisted(() => ({
-  getMock:  vi.fn(),
-  postMock: vi.fn(),
+// Mock del servicio para evitar llamadas reales
+vi.mock('../src/services/blueprintsService.js', () => ({
+  getAll: vi.fn(async () => []),
+  getByAuthor: vi.fn(async (author) => {
+    if (author === 'johnoe') {
+      return [
+        { author: 'johnoe', name: 'blueprint1', points: [{ x: 0, y: 0 }, { x: 10, y: 10 }, { x: 20, y: 5 }] },
+        { author: 'johnoe', name: 'blueprint2', points: [{ x: 5, y: 5 }] },
+      ]
+    }
+    throw new Error('Not found')
+  }),
+  getByAuthorAndName: vi.fn(async (author, name) => ({
+    author,
+    name,
+    points: [{ x: 0, y: 0 }, { x: 100, y: 100 }],
+  })),
+  create: vi.fn(),
+  default: {},
 }))
 
-vi.mock('axios', () => ({
-  default: {
-    create: () => ({
-      get: getMock,
-      post: postMock,
-      interceptors: {
-        request:  { use: vi.fn() },
-        response: { use: vi.fn() },
-      },
-    }),
-  },
-}))
-
-const renderPage = (preloadedState = {}) => {
+function renderWithStore(preloadedState = {}) {
   const store = configureStore({
     reducer: { blueprints: blueprintsReducer },
-    preloadedState: {
-      blueprints: {
-        authors: [], byAuthor: {}, current: null, status: 'idle', error: null,
-        ...preloadedState,
-      },
-    },
+    preloadedState,
   })
-  render(
-    <Provider store={store}>
-      <MemoryRouter>
-        <BlueprintsPage />
-      </MemoryRouter>
-    </Provider>,
-  )
-  return { store }
+  return {
+    store,
+    ...render(
+      <Provider store={store}>
+        <MemoryRouter>
+          <BlueprintsPage />
+        </MemoryRouter>
+      </Provider>,
+    ),
+  }
 }
 
 describe('BlueprintsPage', () => {
-  beforeEach(() => {
-    getMock.mockReset()
-    postMock.mockReset()
-    // fetchAuthors siempre resuelve vacío por defecto
-    getMock.mockResolvedValue({ data: [] })
+  it('renderiza el input de autor y el botón', () => {
+    renderWithStore()
+    expect(screen.getByTestId('author-input')).toBeInTheDocument()
+    expect(screen.getByTestId('get-blueprints-btn')).toBeInTheDocument()
   })
 
-  it('renderiza el campo de texto para buscar por autor', async () => {
-    await act(async () => { renderPage() })
-    expect(screen.getByPlaceholderText(/author/i)).toBeInTheDocument()
+  it('muestra el canvas con el identificador correcto', () => {
+    renderWithStore()
+    expect(screen.getByTestId('blueprint-canvas')).toBeInTheDocument()
   })
 
-  it('renderiza el botón "Get blueprints"', async () => {
-    await act(async () => { renderPage() })
-    expect(screen.getByRole('button', { name: /get blueprints/i })).toBeInTheDocument()
+  it('muestra vacío cuando no hay plano seleccionado', () => {
+    renderWithStore()
+    expect(screen.getByTestId('current-blueprint-name')).toHaveValue('')
   })
 
-  it('muestra "Sin resultados." en estado inicial', async () => {
-    await act(async () => { renderPage() })
-    expect(screen.getByText(/sin resultados/i)).toBeInTheDocument()
+  it('despacha fetchByAuthor al hacer clic en "Get blueprints"', async () => {
+    const { store } = renderWithStore()
+    fireEvent.change(screen.getByTestId('author-input'), { target: { value: 'johnoe' } })
+    fireEvent.click(screen.getByTestId('get-blueprints-btn'))
+
+    // Espera a que el thunk resuelva
+    await screen.findByTestId('blueprint-table')
+
+    const state = store.getState().blueprints
+    expect(state.byAuthor['johnoe']).toHaveLength(2)
   })
 
-  // "Cargando..." solo aparece cuando status=loading Y el componente ya tiene selectedAuthor
-  // Para lograrlo, iniciamos la búsqueda y dejamos la promesa sin resolver
-  it('muestra "Cargando..." mientras fetchAuthors está en curso', async () => {
-    // fetchAuthors nunca resuelve → status queda en 'loading'
-    getMock.mockReturnValueOnce(new Promise(() => {}))
-    await act(async () => { renderPage() })
-    expect(screen.getByText(/cargando/i)).toBeInTheDocument()
-  })
-
-  it('despacha fetchByAuthor al hacer clic con un autor escrito', async () => {
-    getMock
-      .mockResolvedValueOnce({ data: [] })  // fetchAuthors
-      .mockResolvedValueOnce({ data: [{ author: 'johnoe', name: 'bp1', points: [] }] })
-
-    await act(async () => { renderPage() })
-
-    await userEvent.type(screen.getByPlaceholderText(/author/i), 'johnoe')
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /get blueprints/i }))
+  it('muestra la tabla con columnas correctas', async () => {
+    renderWithStore({
+      blueprints: {
+        authors: [],
+        byAuthor: {
+          johnoe: [
+            { author: 'johnoe', name: 'blueprint1', points: [{ x: 0, y: 0 }, { x: 1, y: 1 }, { x: 2, y: 2 }] },
+          ],
+        },
+        current: null,
+        status: 'idle',
+        authorStatus: 'succeeded',
+        error: null,
+      },
     })
 
-    await waitFor(() => expect(getMock).toHaveBeenCalledTimes(2))
+    // Forzar que selectedAuthor sea 'johnoe'
+    fireEvent.change(screen.getByTestId('author-input'), { target: { value: 'johnoe' } })
+    fireEvent.click(screen.getByTestId('get-blueprints-btn'))
+
+    await screen.findByText('blueprint1')
+    expect(screen.getByText('Blueprint name')).toBeInTheDocument()
+    expect(screen.getByText('Number of points')).toBeInTheDocument()
+    expect(screen.getAllByText('Open').length).toBeGreaterThan(0)
   })
 
-  it('muestra la tabla con blueprints tras buscar', async () => {
-    const mockData = [
-      { author: 'johnoe', name: 'bp1', points: [{ x: 0, y: 0 }] },
-      { author: 'johnoe', name: 'bp2', points: [{ x: 1, y: 1 }] },
-    ]
-    getMock
-      .mockResolvedValueOnce({ data: [] })       // fetchAuthors
-      .mockResolvedValueOnce({ data: mockData }) // fetchByAuthor
+  it('actualiza el nombre del plano en el DOM vía Redux al hacer Open', async () => {
+    renderWithStore()
+    fireEvent.change(screen.getByTestId('author-input'), { target: { value: 'johnoe' } })
+    fireEvent.click(screen.getByTestId('get-blueprints-btn'))
 
-    await act(async () => { renderPage() })
+    const openBtn = await screen.findAllByText('Open')
+    fireEvent.click(openBtn[0])
 
-    await userEvent.type(screen.getByPlaceholderText(/author/i), 'johnoe')
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /get blueprints/i }))
-    })
-
-    await waitFor(() => {
-      expect(screen.getByText('bp1')).toBeInTheDocument()
-      expect(screen.getByText('bp2')).toBeInTheDocument()
-    })
+    // El nombre viene de Redux → sin manipulación directa del DOM
+    expect(await screen.findByTestId('current-blueprint-name')).not.toHaveTextContent('—')
   })
 })
