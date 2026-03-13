@@ -1,27 +1,28 @@
-import { render } from '@testing-library/react'
-import BlueprintCanvas from '../src/components/BlueprintCanvas'
+import { render, screen } from '@testing-library/react'
+import BlueprintCanvas from '../src/components/BlueprintCanvas.jsx'
 
 describe('BlueprintCanvas', () => {
-  it('renderiza un elemento <canvas> en el DOM', () => {
-    render(<BlueprintCanvas points={[]} />)
-    const canvas = document.querySelector('canvas')
-    expect(canvas).not.toBeNull()
+  it('renderiza el canvas con data-testid correcto', () => {
+    render(<BlueprintCanvas />)
+    expect(screen.getByTestId('blueprint-canvas')).toBeInTheDocument()
   })
 
-  it('renderiza con puntos sin lanzar errores', () => {
-    const points = [{ x: 10, y: 20 }, { x: 50, y: 80 }, { x: 120, y: 40 }]
-    expect(() => render(<BlueprintCanvas points={points} />)).not.toThrow()
+  it('tiene las dimensiones por defecto 520×360', () => {
+    render(<BlueprintCanvas />)
+    const canvas = screen.getByTestId('blueprint-canvas')
+    expect(canvas).toHaveAttribute('width', '520')
+    expect(canvas).toHaveAttribute('height', '360')
   })
 
-  it('el canvas tiene dimensiones definidas', () => {
-    render(<BlueprintCanvas points={[]} />)
-    const canvas = document.querySelector('canvas')
-    expect(canvas).not.toBeNull()
-    expect(canvas.width).toBeGreaterThanOrEqual(0)
-    expect(canvas.height).toBeGreaterThanOrEqual(0)
+  it('acepta dimensiones personalizadas', () => {
+    render(<BlueprintCanvas width={300} height={200} />)
+    const canvas = screen.getByTestId('blueprint-canvas')
+    expect(canvas).toHaveAttribute('width', '300')
+    expect(canvas).toHaveAttribute('height', '200')
   })
 
-  it('renderiza sin errores cuando points no se pasa', () => {
-    expect(() => render(<BlueprintCanvas />)).not.toThrow()
+  it('llama a getContext al recibir puntos', () => {
+    render(<BlueprintCanvas points={[{ x: 10, y: 10 }, { x: 50, y: 50 }]} />)
+    expect(HTMLCanvasElement.prototype.getContext).toHaveBeenCalledWith('2d')
   })
 })
